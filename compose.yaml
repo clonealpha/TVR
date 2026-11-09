@@ -1,0 +1,105 @@
+# 5-node FRR ring topology
+#
+#        r1 ---- r2
+#        |        |
+#        r5       r3
+#         \      /
+#           r4
+#
+# 링크 네트워크: net12, net23, net34, net45, net15 (10.0.XY.0/24, rX=.X, rY=.Y)
+# 루프백:       rN -> 10.255.0.N/32  (OSPF area 0 으로 전파)
+
+x-frr-common: &frr-common
+  image: quay.io/frrouting/frr:10.2.1
+  restart: unless-stopped
+  cap_add:
+    - NET_ADMIN
+    - NET_RAW
+    - SYS_ADMIN
+    - NET_BIND_SERVICE
+  sysctls:
+    - net.ipv4.ip_forward=1
+    - net.ipv6.conf.all.forwarding=1
+  healthcheck:
+    test: ["CMD", "vtysh", "-c", "show version"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+
+services:
+  r1:
+    <<: *frr-common
+    container_name: r1
+    hostname: r1
+    volumes:
+      - ./frr/common/daemons:/etc/frr/daemons
+      - ./frr/common/vtysh.conf:/etc/frr/vtysh.conf
+      - ./frr/r1/frr.conf:/etc/frr/frr.conf
+    networks:
+      net12: { ipv4_address: 10.0.12.1 }
+      net15: { ipv4_address: 10.0.15.1 }
+
+  r2:
+    <<: *frr-common
+    container_name: r2
+    hostname: r2
+    volumes:
+      - ./frr/common/daemons:/etc/frr/daemons
+      - ./frr/common/vtysh.conf:/etc/frr/vtysh.conf
+      - ./frr/r2/frr.conf:/etc/frr/frr.conf
+    networks:
+      net12: { ipv4_address: 10.0.12.2 }
+      net23: { ipv4_address: 10.0.23.2 }
+
+  r3:
+    <<: *frr-common
+    container_name: r3
+    hostname: r3
+    volumes:
+      - ./frr/common/daemons:/etc/frr/daemons
+      - ./frr/common/vtysh.conf:/etc/frr/vtysh.conf
+      - ./frr/r3/frr.conf:/etc/frr/frr.conf
+    networks:
+      net23: { ipv4_address: 10.0.23.3 }
+      net34: { ipv4_address: 10.0.34.3 }
+
+  r4:
+    <<: *frr-common
+    container_name: r4
+    hostname: r4
+    volumes:
+      - ./frr/common/daemons:/etc/frr/daemons
+      - ./frr/common/vtysh.conf:/etc/frr/vtysh.conf
+      - ./frr/r4/frr.conf:/etc/frr/frr.conf
+    networks:
+      net34: { ipv4_address: 10.0.34.4 }
+      net45: { ipv4_address: 10.0.45.4 }
+
+  r5:
+    <<: *frr-common
+    container_name: r5
+    hostname: r5
+    volumes:
+      - ./frr/common/daemons:/etc/frr/daemons
+      - ./frr/common/vtysh.conf:/etc/frr/vtysh.conf
+      - ./frr/r5/frr.conf:/etc/frr/frr.conf
+    networks:
+      net45: { ipv4_address: 10.0.45.5 }
+      net15: { ipv4_address: 10.0.15.5 }
+
+networks:
+  net12:
+    driver: bridge
+    ipam: { config: [{ subnet: 10.0.12.0/24, gateway: 10.0.12.254 }] }
+  net23:
+    driver: bridge
+    ipam: { config: [{ subnet: 10.0.23.0/24, gateway: 10.0.23.254 }] }
+  net34:
+    driver: bridge
+    ipam: { config: [{ subnet: 10.0.34.0/24, gateway: 10.0.34.254 }] }
+  net45:
+    driver: bridge
+    ipam: { config: [{ subnet: 10.0.45.0/24, gateway: 10.0.45.254 }] }
+  net15:
+    driver: bridge
+    ipam: { config: [{ subnet: 10.0.15.0/24, gateway: 10.0.15.254 }] }
